@@ -1,0 +1,90 @@
+- name: Desabilitar conf apache welcome.conf
+  shell: mv /etc/httpd/conf.d/welcome.conf /etc/httpd/conf.d/welcome.conf.disabled
+
+- name: Copy Conf Apache
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/file_site_name_conf.conf"
+
+## Utilize se for clonar de um repositório do GitHub
+#- name: Clone Project Repository
+#  git:
+#    repo: "https://{{ github_user | urlencode }}:{{ github_passwd | urlencode }}@{{ github_url | urlencode }}"
+#    dest: "{{ path_site }}"
+#    #single_branch: yes
+#    remote: origin
+#    version: main
+#
+#- name: Change file ownership, group and permissions project
+#  file:
+#    path: "{{ path_site }}"
+#    state: directory
+#    recurse: yes
+#    owner: apache
+#    group: apache
+#    mode: '0751'
+
+- name: Create directory intranet if it does not exist
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+- name: Copy Conf Apache intranet
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/{{ file_site_name_conf }}"
+
+- name: Obter IP principal da interface
+  ansible.builtin.set_fact:
+    ip_local: "{{ ansible_default_ipv4.address }}"
+
+- name: Adicionar entrada ao /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ip_local }} {{ server_name_apache }}"
+    state: present
+    create: yes
+    backup: yes
+
+- name: Copiar arquivo intranet.zip compactado para o servidor
+  copy:
+    src: intranet.zip
+    dest: "/tmp/intranet.zip"
+    mode: '0644'
+
+- name: Descompactar arquivo intranet.zip no servidor
+  unarchive:
+    src: "/tmp/intranet.zip"
+    dest: "{{ path_site }}"
+    remote_src: yes
+
+- name: Remover o arquivo intranet.zip após descompactar
+  file:
+    path: "/tmp/intranet.zip"
+    state: absent
+
+- name: Change file ownership, group and permissions project
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+#- name: Config Selinux 
+#  shell: "chcon -Rv --type=httpd_t {{ path_site }} && chcon -R -t httpd_sys_rw_content_t {{ path_site }}"
+
+- name: Definir contexto de leitura para arquivos
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_content_t '{{ path_site }}(/.*)?'"
+  register: semanage_read
+
+- name: Aplicar contextos definidos com restorecon
+  ansible.builtin.command:
+    cmd: "restorecon -Rv {{ path_site }}"
+  register: restorecon_output

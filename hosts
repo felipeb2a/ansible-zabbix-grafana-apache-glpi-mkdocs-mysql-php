@@ -1,0 +1,19 @@
+[master]
+vm-node-02
+
+[master:vars]
+# vars domain
+domain="yourdomain.com.br"
+
+# vars php
+php_version_1=php74
+php_version_2=php83
+
+# vars file for config-sites
+path_apache_conf="/etc/httpd/conf.d"
+path_html="/var/www/html/"
+path_mkdocs="/var/www/mkdocs/"
+
+# vars git
+# github_user="youruser"
+# github_passwd="yourkey"

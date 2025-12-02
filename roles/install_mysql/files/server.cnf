@@ -1,0 +1,82 @@
+#
+# These groups are read by MariaDB server.
+# Use it for options that only the server (but not clients) should see
+#
+# See the examples of server my.cnf files in /usr/share/mysql/
+#
+
+# this is read by the standalone daemon and embedded servers
+[server]
+
+# this is only for the mysqld standalone daemon
+[mysqld]
+
+#
+# * Galera-related settings
+#
+[galera]
+# Mandatory settings
+#wsrep_on=ON
+#wsrep_provider=
+#wsrep_cluster_address=
+#binlog_format=row
+#default_storage_engine=InnoDB
+#innodb_autoinc_lock_mode=2
+#
+# Allow server to accept connections on all interfaces.
+#
+#bind-address=0.0.0.0
+#
+# Optional setting
+#wsrep_slave_threads=1
+#innodb_flush_log_at_trx_commit=0
+
+# this is only for embedded server
+[embedded]
+
+# This group is only read by MariaDB servers, not by MySQL.
+# If you use the same .cnf file for MySQL and MariaDB,
+# you can put MariaDB-only options here
+[mariadb]
+
+# This group is only read by MariaDB-10.11 servers.
+# If you use the same .cnf file for MariaDB of different versions,
+# use this group for options that older servers don't understand
+[mariadb-10.11]
+
+bind-address = 0.0.0.0
+
+# Geral
+innodb_buffer_pool_size = 1G       # ~75% da RAM disponível
+innodb_buffer_pool_instances = 8    # Para dividir a carga em sistemas com múltiplos vCPUs
+innodb_log_file_size = 1G           # Para suportar grandes transações
+innodb_flush_log_at_trx_commit = 2  # Compromisso entre desempenho e segurança
+innodb_thread_concurrency = 32      # Limita threads simultâneas (40 vCPUs)
+innodb_read_io_threads = 16
+innodb_write_io_threads = 16
+innodb_flush_method = O_DIRECT
+max_connections = 500               # Ajuste de acordo com o número esperado de conexões
+table_open_cache = 4096
+query_cache_size = 0                # Desativado para versões modernas (deprecated)
+tmp_table_size = 256M
+max_heap_table_size = 256M
+
+# Log e binários
+#log_bin = /var/log/mariadb/mariadb-bin
+expire_logs_days = 7
+sync_binlog = 1
+
+# Buffers e caches
+key_buffer_size = 512M
+sort_buffer_size = 4M
+read_buffer_size = 4M
+read_rnd_buffer_size = 8M
+join_buffer_size = 4M
+
+# Timeout
+wait_timeout = 600
+interactive_timeout = 600
+
+# Ajustes de otimização
+skip_name_resolve
+sql_mode = STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION

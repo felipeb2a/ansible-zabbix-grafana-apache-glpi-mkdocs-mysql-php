@@ -1,0 +1,15 @@
+- name: Stop service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
+  systemd:
+    state: stopped
+    daemon_reload: yes
+    name: httpd
+
+- name: Install packages git, certbot, python3-certbot-apache
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - git
+    - certbot
+    - python3-certbot-apache

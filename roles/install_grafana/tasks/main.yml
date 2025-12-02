@@ -1,0 +1,217 @@
+# tasks file for install-grafana
+
+- name: Permit traffic in default zone on ports 3000/tcp [Grafana]
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+  loop:
+    - 3000
+
+- name: Reload firewalld
+  shell: firewall-cmd --reload
+
+- name: Importar chave GPG do Grafana
+  rpm_key:
+    key: https://rpm.grafana.com/gpg.key
+    state: present
+
+- name: Adicionar repositório oficial do Grafana
+  copy:
+    dest: /etc/yum.repos.d/grafana.repo
+    content: |
+      [grafana]
+      name=Grafana OSS
+      baseurl=https://rpm.grafana.com
+      repo_gpgcheck=1
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://rpm.grafana.com/gpg.key
+      sslverify=1
+
+- name: Instalar pacote Grafana
+  package:
+    name: grafana
+    state: present
+
+- name: Habilitar e iniciar serviço do Grafana
+  service:
+    name: grafana-server
+    enabled: yes
+    state: started
+
+- name: Instalar plugin oficial de integração com Zabbix no Grafana
+  ansible.builtin.command:
+    cmd: grafana-cli plugins install alexanderzobnin-zabbix-app
+    #cmd: grafana-cli plugins install alexanderzobnin-zabbix-app 4.0.2
+  notify: Reiniciar Grafana
+
+- name: Backup do grafana.ini original
+  copy:
+    src: /etc/grafana/grafana.ini
+    dest: /etc/grafana/grafana.ini.bkp_{{ ansible_date_time.iso8601 }}
+    remote_src: yes
+    backup: yes
+
+- name: Ajustar root_url e serve_from_sub_path
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?root_url\s*='
+    line: 'root_url = {{ grafana_url }}/'
+    insertafter: '[server]'
+    state: present
+
+- name: Ativar serve_from_sub_path
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?serve_from_sub_path\s*='
+    line: 'serve_from_sub_path = false'
+    insertafter: '[server]'
+    state: present
+
+- name: Otimizar cache e tempo de sessão
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?session_life_time\s*='
+    line: 'session_life_time = 86400'
+    insertafter: '[auth]'
+    state: present
+
+- name: Ativar gzip para assets
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?enable_gzip\s*='
+    line: 'enable_gzip = true'
+    insertafter: '[server]'
+    state: present
+
+- name: Aumentar número de workers para performance
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;?http_server_max_concurrent_connections\s*='
+    line: 'http_server_max_concurrent_connections = 100'
+    insertafter: '[server]'
+    state: present
+
+- name: Copy Conf Apache grafana
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/{{ file_site_name_conf }}"
+
+- name: Get main IP
+  ansible.builtin.set_fact:
+    ip_local: "{{ ansible_default_ipv4.address }}"
+
+- name: Add input at /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ip_local }} {{ server_name_apache }}"
+    state: present
+    create: yes
+    backup: yes
+
+- name: Corrigir permissões do diretório de plugins do Grafana
+  file:
+    path: /var/lib/grafana/plugins
+    owner: grafana
+    group: grafana
+    mode: '0755'
+    recurse: yes
+  notify: Reiniciar Grafana
+
+- name: Adicionar contexto SELinux httpd_sys_rw_content_t para Grafana
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_rw_content_t '/var/lib/grafana(/.*)?'"
+  register: semanage_context
+  failed_when: semanage_context.rc != 0 and "'already defined' not in semanage_context.stdout"
+
+- name: Aplicar contextos com restorecon
+  ansible.builtin.command:
+    cmd: "restorecon -Rv /var/lib/grafana"
+  register: restorecon_output
+
+- name: Restart service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: httpd
+
+- name: Reiniciar serviço do Grafana
+  systemd:
+    name: grafana-server
+    state: restarted
+    enabled: yes
+
+# ATE AQUI INSTALOU OK
+
+# Utilizar com plugin mais recente acima do 4.0.2
+- name: Ativar plugin Zabbix no Grafana
+  uri:
+    url: "{{ grafana_url }}/api/plugins/alexanderzobnin-zabbix-app/settings"
+    method: POST
+    user: "{{ grafana_user }}"
+    password: "{{ grafana_password }}"
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+    body:
+      enabled: true
+    #validate_certs: no  # caso o Grafana esteja usando HTTPS com certificado
+
+- name: Criar datasource Zabbix no Grafana
+  uri:
+    url: "{{ grafana_url }}/api/datasources"
+    method: POST
+    user: "{{ grafana_user }}"
+    password: "{{ grafana_password }}"
+    force_basic_auth: yes
+    status_code: 200
+    body_format: json
+    body:
+      name: "Zabbix"
+      type: "alexanderzobnin-zabbix-datasource"
+      access: "proxy"
+      url: "{{ zabbix_api_url }}"
+      basicAuth: false
+      isDefault: false
+      jsonData:
+        username: "{{ zabbix_user }}"
+        password: "{{ zabbix_password }}"
+        trends: true
+        trendsFrom: "7d"
+        trendsRange: "4d"
+        cacheTTL: "1h"
+        timeout: 30
+        disableDataAlignment: false
+        dbConnectionEnable: false
+        alerting: false
+    #validate_certs: no  # caso o Grafana esteja usando HTTPS com certificado
+
+- name: Reiniciar Grafana para aplicar configuração
+  systemd:
+    name: grafana-server
+    state: restarted
+    enabled: yes
+
+## DESABILITAR GRAFANA LIVE OPCIONAL SE NAO UTILIZAR
+
+#- name: Desativar Grafana Live para evitar erros de WebSocket
+#  lineinfile:
+#    path: /etc/grafana/grafana.ini
+#    regexp: '^max_connections\s*='
+#    line: 'max_connections = 0'
+#    insertafter: '[live]'
+#    state: present
+#
+#- name: Garantir seção [live] existe
+#  lineinfile:
+#    path: /etc/grafana/grafana.ini
+#    line: '[live]'
+#    state: present
+#    insertafter: EOF
+#
+#- name: Reiniciar Grafana após desativar Live
+#  systemd:
+#    name: grafana-server
+#    state: restarted
+#    enabled: yes

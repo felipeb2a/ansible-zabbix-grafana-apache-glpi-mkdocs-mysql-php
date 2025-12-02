@@ -1,0 +1,3 @@
+---
+# tasks file for configurando-instancias
+- import_tasks: provisioning.yml

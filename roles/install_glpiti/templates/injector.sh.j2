@@ -1,0 +1,37 @@
+#!/bin/bash
+
+##
+#import esxi
+esxi=$(ls {{ path_scripts_inventory_files_xml }}/esxi/ -1)
+for arquivo in $esxi
+do
+        echo $arquivo
+	glpi-injector -v -f {{ path_scripts_inventory_files_xml }}/esxi/$arquivo --url "{{ url_inventory_glpi }}"
+done
+
+##
+#import nas
+nas=$(ls {{ path_scripts_inventory_files_xml }}/nas/ -1)
+for arquivo in $nas
+do
+        echo $arquivo
+        glpi-injector -v -f {{ path_scripts_inventory_files_xml }}/nas/$arquivo --url "{{ url_inventory_glpi }}"
+done
+
+##
+#import fw
+fw=$(ls {{ path_scripts_inventory_files_xml }}/fw/ -1)
+for arquivo in $fw
+do
+        echo $arquivo
+        glpi-injector -v -f {{ path_scripts_inventory_files_xml }}/fw/$arquivo --url "{{ url_inventory_glpi }}"
+done
+
+##
+#import sw
+sw=$(ls {{ path_scripts_inventory_files_xml }}/sw/ -1)
+for arquivo in $sw
+do
+        echo $arquivo
+        glpi-injector -v -f {{ path_scripts_inventory_files_xml }}/sw/$arquivo --url "{{ url_inventory_glpi }}"
+done

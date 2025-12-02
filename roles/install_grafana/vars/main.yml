@@ -1,0 +1,14 @@
+---
+# vars file for install-grafana
+name_app: grafana
+path_site: /usr/share/grafana
+file_site_name_conf: grafana.conf
+server_name_apache: "grafana.yourdomain.com.br"
+path_apache_conf: /etc/httpd/conf.d
+
+grafana_url: "http://grafana.yourdomain.com.br"
+grafana_user: "admin"
+grafana_password: "admin"
+zabbix_api_url: "http://zabbix.yourdomain.com.br/zabbix/api_jsonrpc.php"
+zabbix_user: "Admin"
+zabbix_password: "zabbix"

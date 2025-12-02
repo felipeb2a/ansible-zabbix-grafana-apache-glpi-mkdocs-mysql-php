@@ -1,0 +1,152 @@
+- name: Instalando os pacotes gcc, openssl-devel, bzip2-devel, pip
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - gcc
+    - openssl-devel
+    - bzip2-devel
+    - unzip
+    - pip
+
+- name: Upgrade pip
+  shell: "python -m pip install --upgrade pip"
+
+- name: Instalando os pacotes para instalar WeasyPrint 
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - python-pip
+    - python-pillow
+    - python-cffi
+    - python3-brotli
+    - python3-devel
+    - pango
+    - gcc-c++
+    - zlib-devel
+    - libjpeg-devel
+    - libffi-devel
+    #- openjpeg2-devel
+
+#- name: Download MKDOCS
+#  get_url:
+#    url: "{{ url_download_mkdocs }}"
+#    dest: "/tmp/{{ name_download_mkdocs_file }}"
+
+#- name: Install MKDOCS
+#  shell: "pip install -U /tmp/{{ name_download_mkdocs_file }}"
+
+- name: Install MKDOCS
+  pip:
+    name: mkdocs
+
+- name: Copiar MKDOCS para que esteja disponivel para todos os usuarios
+  shell: "cp -r /usr/local/bin/mkdocs /usr/bin/mkdocs"
+
+
+# mkdocs-exporter e mkdocs-material instalar manualmente
+- name: Instalando dependencias para o MKDOCS
+  pip:
+    name: "{{ item }}"
+    state: present
+  with_items:
+  - weasyprint
+  - requests #requirement mkdocs-material
+  - lxml #requirement mkdocs-exporter
+  - playwright #requirement mkdocs-exporter
+  - CairoSVG #requirement mkdocs-exporter
+  - Pillow #requirement mkdocs-exporter
+  - cairocffi #requirement mkdocs-exporter
+  - greenlet #requirement mkdocs-exporter
+  #- mkdocs-material
+  - pymdown-extensions
+  - markdown-blockdiag
+  - markdown-include
+  - mkdocs-pdf-export-plugin
+  - click-man
+  - mkdocs-mermaid-plugin
+  - mkdocs-awesome-pages-plugin
+  #- mkdocs-exporter
+  - mkdocs-with-pdf
+  - mkpdfs2-mkdocs
+  - qrcode
+#  - mkdocs-foo-plugin
+
+- name: Create directory mkdocs if it does not exist
+  file:
+    path: "{{ path_mkdocs }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+- name: Create directory mkdocs manualinfra if it does not exist
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+- name: Copy Conf Apache Manual infra
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/{{ file_site_name_conf }}"
+
+- name: Obter IP principal da interface
+  ansible.builtin.set_fact:
+    ip_local: "{{ ansible_default_ipv4.address }}"
+
+- name: Adicionar entrada ao /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ip_local }} {{ server_name_apache }}"
+    state: present
+    create: yes
+    backup: yes
+
+#- name: Sincronizar pasta manualinfra/docs com o servidor de destino
+#  ansible.posix.synchronize:
+#      src: "manualinfra/docs/"
+#      dest: "{{ path_site }}/docs/"
+#      recursive: yes
+#      delete: no
+
+- name: Copiar arquivo manualinfra.zip compactado para o servidor
+  copy:
+    src: manualinfra.zip
+    dest: "/tmp/manualinfra.zip"
+    mode: '0644'
+
+- name: Descompactar arquivo manualinfra.zip no servidor
+  unarchive:
+    src: "/tmp/manualinfra.zip"
+    dest: "{{ path_site }}"
+    remote_src: yes
+
+- name: Remover o arquivo manualinfra.zip após descompactar
+  file:
+    path: "/tmp/manualinfra.zip"
+    state: absent
+
+- name: Build mkdocs project manualinfra
+  shell: mkdocs build
+  args:
+    chdir: "{{ path_site }}"
+
+- name: Change file ownership, group and permissions project
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+##- name: Change file ownership, group and permissions project folder
+##  shell: "chown -R apache:apache {{ path_site }}"

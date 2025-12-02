@@ -1,0 +1,90 @@
+- name: Disable the default PHP module
+  shell: dnf -y module reset php
+
+- name: Enable Remis PHP7.4 module
+  shell: dnf -y module enable php:remi-7.4
+
+#- name: Instalando o php 7.4
+#  shell: dnf -y module install php:remi-7.4
+
+- name: Instalando o php 7.4
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php74
+
+#- name: Update Repo
+#  shell: dnf -y update
+
+- name: Instalando os modulos php 7.4
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php74-php-apcu
+    - php74-php-bcmath
+    - php74-php-cgi
+    - php74-php-cli
+    - php74-php-common
+    - php74-php-curl
+    - php74-php-dom
+    - php74-php-fpm
+    - php74-php-gd
+    - php74-php-imagick
+    - php74-php-imap
+    - php74-php-intl
+    - php74-php-json
+    - php74-php-ldap
+    - php74-php-mbstring
+    - php74-php-mcrypt
+    - php74-php-memcached
+    - php74-php-memcache
+    - php74-php-mysql
+    - php74-php-mysqlnd
+    - php74-php-opcache
+    - php74-php-openssl
+    - php-pear-CAS
+    - php74-php-phar
+    - php74-php-pdo
+    - php74-php-readline
+    - php74-php-redis
+    - php74-php-sodium
+    - php74-php-tokenizer
+    - php74-php-xml
+    - php74-php-xmlrpc
+    - php74-php-zip
+    - php74-php-sockets
+    - php74-php-xmlwriter
+    - php74-php-xmlreader
+    - php74-php-ctype
+    - php74-php-session
+    - php74-php-gettext
+
+- name: Definir diretivas listen.owner, listen.group e listen.mode no PHP-FPM 7.4
+  ansible.builtin.lineinfile:
+    path: /etc/opt/remi/php74/php-fpm.d/www.conf
+    regexp: '^listen.owner|^listen.group|^listen.mode'
+    line: "{{ item }}"
+    state: present
+    insertafter: '^\\[www\\]'
+  loop:
+    - 'listen.owner = apache'
+    - 'listen.group = apache'
+    - 'listen.mode = 0660'
+
+- name: Habilitando o serviço php74-php-fpm
+  systemd:
+    name: php74-php-fpm
+    state: started
+    enabled: yes
+
+- name: Corrigir permissões do socket PHP-FPM 7.4
+  file:
+    path: /var/opt/remi/php74/run/php-fpm/www.sock
+    owner: apache
+    group: apache
+    mode: '0660'
+  #when: ansible_facts.services['php74-php-fpm'].state == 'running's

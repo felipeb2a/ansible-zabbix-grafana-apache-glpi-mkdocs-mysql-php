@@ -1,0 +1,8 @@
+---
+# vars file for install-site-intranet
+name_app: intranet
+path_site: /var/www/html/intranet
+file_site_name_conf: intranet.conf
+server_name_apache: "intranet.yourdomain.com.br"
+path_apache_conf: /etc/httpd/conf.d
+github_url: "github.com/yourdomainintranet/intranet.git"

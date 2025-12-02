@@ -1,0 +1,84 @@
+- name: Disable the default PHP module
+  shell: dnf -y module reset php
+
+- name: Enable Remis PHP8.3 module
+  shell: dnf -y module enable php:remi-8.3
+
+- name: Instalando o php 8.3
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php83
+
+- name: Instalando os modulos php 8.3
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php83-php-apcu
+    - php83-php-bcmath
+    - php83-php-cgi
+    - php83-php-cli
+    - php83-php-common
+    - php83-php-curl
+    - php83-php-dom
+    - php83-php-fpm
+    - php83-php-gd
+    - php83-php-imagick
+    - php83-php-imap
+    - php83-php-intl
+    - php83-php-json
+    - php83-php-ldap
+    - php83-php-mbstring
+    - php83-php-mcrypt
+    - php83-php-memcached
+    - php83-php-memcache
+    - php83-php-mysql
+    - php83-php-mysqlnd
+    - php83-php-opcache
+    - php83-php-openssl
+    - php-pear-CAS
+    - php83-php-phar
+    - php83-php-pdo
+    - php83-php-readline
+    - php83-php-redis
+    - php83-php-sodium
+    - php83-php-tokenizer
+    - php83-php-xml
+    - php83-php-xmlrpc
+    - php83-php-zip
+    - php83-php-sockets
+    - php83-php-xmlwriter
+    - php83-php-xmlreader
+    - php83-php-ctype
+    - php83-php-session
+    - php83-php-gettext
+
+- name: Definir diretivas listen.owner, listen.group e listen.mode no PHP-FPM 8.3
+  ansible.builtin.lineinfile:
+    path: /etc/opt/remi/php83/php-fpm.d/www.conf
+    regexp: '^listen.owner|^listen.group|^listen.mode'
+    line: "{{ item }}"
+    state: present
+    insertafter: '^\\[www\\]'
+  loop:
+    - 'listen.owner = apache'
+    - 'listen.group = apache'
+    - 'listen.mode = 0660'
+
+- name: Habilitando o serviço php83-php-fpm
+  systemd:
+    name: php83-php-fpm
+    state: started
+    enabled: yes
+
+- name: Corrigir permissões do socket PHP-FPM 8.3
+  file:
+    path: /var/opt/remi/php83/run/php-fpm/www.sock
+    owner: apache
+    group: apache
+    mode: '0660'
+  #when: ansible_facts.services['php83-php-fpm'].state == 'running'

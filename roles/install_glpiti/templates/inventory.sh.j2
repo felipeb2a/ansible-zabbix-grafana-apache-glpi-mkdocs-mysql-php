@@ -1,0 +1,17 @@
+##!/bin/bash
+##netinventory nas
+#rm -rvf {{ path_scripts_inventory_files_xml }}/nas/*
+#glpi-netinventory --host 192.168.0.61 community:public > {{ path_scripts_inventory_files_xml }}/nas/inventory-nas-61.xml
+#
+##netinventory sws
+#rm -rvf {{ path_scripts_inventory_files_xml }}/sw/*
+#glpi-netinventory --host 192.168.0.253 community:public > {{ path_scripts_inventory_files_xml }}/sw/inventory-sw-253.xml
+#
+##netinventory fw
+#rm -rvf {{ path_scripts_inventory_files_xml }}/fw/*
+#glpi-netinventory --host 192.168.0.254 community:public > {{ path_scripts_inventory_files_xml }}/fw/inventory-fw-254.xml
+#
+##esx
+#rm -rvf {{ path_scripts_inventory_files_xml }}/esxi/*
+#glpi-esx --host 172.0.0.0 --user root --password "P@sswd" --path {{ path_scripts_inventory_files_xml }}/esxi/ --json
+#

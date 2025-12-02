@@ -1,0 +1,101 @@
+- name: Instalando Python-PyMySQL
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - python-PyMySQL
+
+- name: Copy mariadb.repo
+  copy:
+    src: mariadb.repo
+    dest: /etc/yum.repos.d/mariadb.repo
+
+- name: Copy .my.cnf
+  copy:
+    src: .my.cnf
+    dest: /root/.my.cnf
+
+- name: Change file ownership, group and permissions .my.cnf
+  file:
+    path: "/root/.my.cnf"
+    state: file
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Update Repo
+  shell: dnf -y update
+
+- name: Instalando MariaDB Server
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - MariaDB-server
+    - MariaDB-client
+
+- name: Habilitando o serviço MariaDB
+  systemd:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: permit traffic in default zone for mysql service
+  firewalld:
+    service: mysql
+    permanent: yes
+    state: enabled
+
+- name: Reload firewalld
+  shell: firewall-cmd --reload
+
+- name: Alter user root with password, all database privileges and 'WITH GRANT OPTION' ALL
+  community.mysql.mysql_user:
+    #login_unix_socket: /var/run/mysqld/mysqld.sock # MySQL
+    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+    state: present
+    name: root
+    password: P@sswd
+    priv:
+      '*.*:ALL,GRANT'
+
+- name: Create user with password, all database privileges and 'WITH GRANT OPTION' ALL
+  community.mysql.mysql_user:
+    state: present
+    name: infra
+    password: P@sswd
+    host: '%'
+    priv: '*.*:ALL,GRANT'
+    login_user: root
+    login_password: 'P@sswd'
+
+- name: Create new databases with names 'glpi'
+  community.mysql.mysql_db:
+    name:
+      - glpi 
+    state: present
+  
+- name: Removes all anonymous user accounts
+  community.mysql.mysql_user:
+    name: ''
+    host_all: true
+    state: absent
+
+- name: Copy server.cnf
+  copy:
+    src: server.cnf
+    dest: /etc/my.cnf.d/server.cnf
+
+#- name: Configura MariaDB para escutar em todas as interfaces
+#  lineinfile:
+#    path: /etc/my.cnf.d/server.cnf
+#    regexp: '^bind-address'
+#    line: 'bind-address = 0.0.0.0'
+#  notify: Restart MariaDB
+#
+#- name: Restart MariaDB
+#  ansible.builtin.service:
+#    name: mariadb
+#    state: restarted

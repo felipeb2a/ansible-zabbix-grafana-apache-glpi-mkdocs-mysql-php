@@ -1,0 +1,7 @@
+---
+# handlers file for install-zabbix
+- name: Mark schema as imported
+  ansible.builtin.file:
+    path: /var/lib/mysql/.zabbix_schema_imported
+    state: touch
+  when: false  # Só será chamado via handler

@@ -1,0 +1,152 @@
+- name: Create directory project glpi if it does not exist
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: '0751'
+
+- name: Copy Conf Apache
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/{{ file_site_name_conf }}"
+
+- name: Obter IP principal da interface
+  ansible.builtin.set_fact:
+    ip_local: "{{ ansible_default_ipv4.address }}"
+
+- name: Adicionar entrada ao /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ip_local }} {{ server_name_apache }}"
+    state: present
+    create: yes
+    backup: yes
+
+- name: Download GLPI
+  get_url:
+    url: "{{ url_download_glpi }}"
+    dest: "/tmp/{{ name_download_glpi_file }}"
+
+#- name: Extract GLPI into {{ path_site }}
+#  shell: "wget -c {{ url_download_glpi }} -O - | sudo tar -xz -C {{ path_site }}"
+
+- name: Extract GLPI to /tmp/glpi
+  unarchive:
+    src: "/tmp/{{ name_download_glpi_file }}"
+    dest: "/tmp/"
+    remote_src: True
+
+- name: Move GLPI to {{ path_site }}
+  shell: "mv /tmp/glpi/* {{ path_site }}/"
+
+
+#- name: Config Selinux 
+#  shell: "chcon -Rv --type=httpd_t {{ path_site }} && chcon -R -t httpd_sys_rw_content_t {{ path_site }}"
+#  #shell: "chcon -Rv --type=httpd_t {{ path_site }}/files && chcon -R -t httpd_sys_rw_content_t {{ path_site }}/files"
+
+- name: Definir contexto de leitura para arquivos GLPI
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_content_t '{{ path_site }}(/.*)?'"
+  register: semanage_read
+
+- name: Definir contexto de leitura e escrita para arquivos modificáveis
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_rw_content_t '{{ path_site }}/files(/.*)?'"
+  register: semanage_rw
+
+- name: Definir contexto de leitura e escrita para diretório config
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_rw_content_t '{{ path_site }}/config(/.*)?'"
+  register: semanage_config_rw
+
+- name: Aplicar contextos definidos com restorecon
+  ansible.builtin.command:
+    cmd: "restorecon -Rv {{ path_site }}"
+  register: restorecon_output
+
+- name: Change file ownership, group and permissions glpi
+  file:
+    path: "{{ path_site }} "
+    owner: apache
+    group: apache
+    recurse: yes
+
+- name: Change file ownership, group and permissions config
+  file:
+    path: "{{ path_site }}/config"
+    owner: apache
+    group: apache
+    recurse: yes
+    mode: '0751'
+
+- name: Change file ownership, group and permissions files
+  file:
+    path: "{{ path_site }}/files"
+    owner: apache
+    group: apache
+    recurse: yes
+    mode: '0751'
+
+- name: Change file ownership, group and permissions marketplace
+  file:
+    path: "{{ path_site }}/marketplace"
+    owner: apache
+    group: apache
+    recurse: yes
+    mode: '0751'
+
+- name: Enable Repo PowerTools/CRB
+  shell: dnf config-manager --set-enabled crb
+
+- name: Instalando os pacotes perl para o GLPI AGENT
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - perl-MCE-tools
+    - perl-Module-CoreList-tools
+    - perl-CPAN
+    - perl-Compress-Zlib
+    - perl-Cpanel-JSON-XS
+    - perl-Data-UUID
+    - perl-DateTime
+    - perl-Digest-SHA
+    - perl-English
+    - perl-File-Which
+    - perl-HTTP-Cookies
+    - perl-HTTP-Daemon
+    - perl-LWP-Protocol-https
+    - perl-Net-IP
+  #  - perl-Net-hostent
+    - perl-Parallel-ForkManager
+    - perl-Proc-Daemon
+    - perl-Socket-GetAddrInfo
+    - perl-Sys-Syslog
+    - perl-Text-Template
+    - perl-Thread-Semaphore
+    - perl-Time-HiRes
+    - perl-UNIVERSAL-require
+    - perl-XML-LibXML
+    - perl-YAML-Tiny
+    - perl-threads
+    - perl-threads-shared
+    - perl-Net-SNMP
+   # - perl-Archive-Extract
+    - perl-File-Copy-Recursive
+
+- name: Permit traffic in default zone on port 62354/tcp [GLPI AGENT]
+  firewalld:
+    port: 62354/tcp
+    permanent: yes
+    state: enabled
+
+- name: Reload firewalld
+  shell: firewall-cmd --reload
+
+# Utilizar apenas para migrar para um novo servidor
+#- name: Copy GLPI Crypt Key update older database GLPI
+#  copy:
+#    src: glpicrypt.key
+#    dest: "{{ path_site }}/config/glpicrypt.key"

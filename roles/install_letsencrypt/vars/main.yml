@@ -1,0 +1,7 @@
+---
+# vars file for install-letsencrypt
+user: administrator
+
+letsencrypt_url: "https://github.com/letsencrypt/letsencrypt"
+letsencrypt_email: "rede@yourdomain.com.br"
+letsencrypt_domain_name: "yourdomain.com.br"

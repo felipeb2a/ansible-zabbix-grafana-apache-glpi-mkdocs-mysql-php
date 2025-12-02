@@ -1,0 +1,20 @@
+---
+# vars file for install-mkdocs 
+path_mkdocs: /var/www/mkdocs
+name_app: manualinfra
+path_site: /var/www/mkdocs/manualinfra
+path_apache_conf: /etc/httpd/conf.d
+file_site_name_conf: manualinfra.conf
+server_name_apache: "manualinfra.yourdomain.com.br"
+
+# vars git
+github_user: ""
+github_passwd: ""
+github_url: ""
+
+# vars php
+php_version: php83
+
+# vars download mkdocs
+url_download_mkdocs: "https://files.pythonhosted.org/packages/89/58/aa3301b23966a71d7f8e55233f467b3cec94a651434e9cd9053811342539/mkdocs-1.5.3-py3-none-any.whl"
+name_download_mkdocs_file: "mkdocs.whl"

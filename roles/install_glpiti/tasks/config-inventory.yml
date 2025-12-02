@@ -1,0 +1,101 @@
+- name: Create folders
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ path_scripts_inventory }}"
+    - "{{ path_scripts_inventory_files_xml }}/nas"
+    - "{{ path_scripts_inventory_files_xml }}/sw"
+    - "{{ path_scripts_inventory_files_xml }}/fw"
+    - "{{ path_scripts_inventory_files_xml }}/esxi"
+
+- name: Copy Script injector
+  template:
+    src: "injector.sh.j2"
+    dest: "{{ path_scripts_inventory }}/injector.sh"
+
+- name: Copy Script inventory
+  template:
+    src: "inventory.sh.j2"
+    dest: "{{ path_scripts_inventory }}/inventory.sh"
+
+- name: Transform scripts .sh executable
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: file
+    mode: '0755'
+  loop:
+    - "{{ path_scripts_inventory }}/injector.sh"
+    - "{{ path_scripts_inventory }}/inventory.sh"
+
+- name: Download GLPI Agent AppImage
+  get_url:
+    url: "{{ url_download_glpiagent }}"
+    dest: "/tmp/{{ name_download_glpiagent_file }}"
+
+#- name: Copy agent AppImage
+#  copy:
+#    src: "glpi-agent-1.15-x86_64.AppImage"
+#    dest: "/tmp/{{ name_download_glpiagent_file }}"
+
+- name: Ensure that the AppImage is executable
+  ansible.builtin.file:
+    path: /tmp/{{ name_download_glpiagent_file }}
+    state: file
+    mode: '0755'
+
+- name: Install GLPI Agent via AppImage
+  ansible.builtin.shell: >
+    ./{{ name_download_glpiagent_file }} --install --server {{ url_inventory_glpi }}
+  args:
+    chdir: /tmp
+
+- name: Locate all GLPI binaries in /usr/local/bin
+  ansible.builtin.find:
+    paths: /usr/local/bin
+    patterns: "glpi*"
+    file_type: file
+  register: glpi_bins
+
+- name: Create symlinks for GLPI binaries in /usr/bin
+  ansible.builtin.file:
+    src: "{{ item.path }}"
+    dest: "/usr/bin/{{ item.path | basename }}"
+    state: link
+  loop: "{{ glpi_bins.files }}"
+
+- name: Config cron to run scripts inventory
+  ansible.builtin.cron:
+    name: "Run injector and inventory"
+    minute: "0"
+    hour: "0"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: "{{ path_scripts_inventory }}/injector.sh && {{ path_scripts_inventory }}/inventory.sh"
+    user: root
+
+- name: Download GLPI Inventory Plugin
+  get_url:
+    url: "{{ url_download_glpiinventory }}"
+    dest: "/tmp/{{ name_download_glpiinventory_file }}"
+
+#- name: Copy plugin glpi inventory
+#  copy:
+#    src: "glpi-glpiinventory-1.3.3.tar.bz2"
+#    dest: "/tmp/{{ name_download_glpiinventory_file }}"
+
+- name: Extrair plugin GLPI Inventory para plugins
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ name_download_glpiinventory_file }}"
+    dest: "{{ path_site }}/plugins/"
+    remote_src: yes
+
+- name: Permit traffic in default zone on ports inventory/tcp [GLPI Inventory]
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+  loop:
+    - "{{ port_inventory }}"

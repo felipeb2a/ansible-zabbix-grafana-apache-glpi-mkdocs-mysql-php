@@ -1,0 +1,3 @@
+---
+# tasks file for install-mkdocs
+- import_tasks: install.yml

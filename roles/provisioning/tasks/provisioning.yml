@@ -1,0 +1,59 @@
+- name: Definir hostname
+  ansible.builtin.hostname:
+    name: "{{ hostname }}"
+
+- name: Adicionar hostname ao /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "127.0.0.1 {{ hostname }}"
+    state: present
+    create: yes
+
+- name: Instalando os pacotes snmp
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - net-snmp
+    - net-snmp-utils
+    - perl-Crypt-Rijndael
+
+- name: Habilitando os serviços snmpd
+  systemd:
+    name: snmpd
+    state: started
+    enabled: yes
+
+- name: Copy snmpd /etc/firewalld/services/snmpd.xml
+  copy:
+    src: snmpd.xml
+    dest: "/etc/firewalld/services/snmpd.xml"
+
+- name: Permit traffic in default zone on port 22/tcp [SSH]
+  firewalld:
+    port: 22/tcp
+    permanent: yes
+    state: enabled
+
+- name: permit traffic in default zone for http service
+  firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+
+- name: permit traffic in default zone for https service
+  firewalld:
+    service: https
+    permanent: yes
+    state: enabled
+
+- name: permit traffic in default zone for snmp service
+  firewalld:
+    service: snmp
+    permanent: yes
+    state: enabled
+
+- name: Reload firewalld
+  shell: firewall-cmd --reload
+

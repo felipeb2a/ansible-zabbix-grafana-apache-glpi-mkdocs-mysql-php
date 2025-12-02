@@ -1,0 +1,14 @@
+- name: Instalando o Remi Repository
+  shell: "dnf -y install {{ url_remi_repo }} && dnf config-manager --set-enabled remi"
+#  shell: sudo dnf module list php
+
+- name: "Create required directories in /var/www/"
+  file:
+    path: "/var/www/{{ item }}"
+    state: directory
+    owner: apache
+    group: apache
+    mode: u=rwx,g=x,o=x
+  with_items:
+  - php74
+  - php83

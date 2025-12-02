@@ -1,0 +1,77 @@
+
+#- name: Instalar Zabbix Web Service
+#  package:
+#    name: zabbix-web-service
+#    state: present
+#
+- name: Instalar Zabbix Web Service ignorando exclusões
+  ansible.builtin.command:
+    cmd: dnf install -y zabbix-web-service --disableexcludes=all
+  register: install_output
+  changed_when: "'Complete!' in install_output.stdout"
+
+- name: Importar chave GPG do Chrome
+  rpm_key:
+    key: https://dl.google.com/linux/linux_signing_key.pub
+    state: present
+  register: result
+  until: result is succeeded
+  retries: 3
+  delay: 5
+
+- name: Adicionar repositório do Google Chrome
+  copy:
+    dest: /etc/yum.repos.d/google-chrome.repo
+    content: |
+      [google-chrome]
+      name=Google Chrome
+      baseurl=https://dl.google.com/linux/chrome/rpm/stable/x86_64
+      enabled=1
+      gpgcheck=1
+      gpgkey=https://dl.google.com/linux/linux_signing_key.pub
+
+- name: Instalar Google Chrome
+  package:
+    name: google-chrome-stable
+    state: present
+
+- name: Criar link simbólico para google-chrome
+  file:
+    src: /usr/bin/google-chrome-stable
+    dest: /usr/bin/google-chrome
+    state: link
+    force: yes
+
+- name: Configurar zabbix_server.conf com WebServiceURL e StartReportWriters
+  blockinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    marker: "# {mark} Zabbix PDF Reporting"
+    block: |
+      StartReportWriters=3
+      WebServiceURL=http://127.0.0.1:10053/report
+
+- name: Configurar zabbix_web_service.conf com ListenPort
+  lineinfile:
+    path: /etc/zabbix/zabbix_web_service.conf
+    regexp: '^#?ListenPort='
+    line: 'ListenPort=10053'
+    create: yes
+
+- name: Criar diretório /var/lib/zabbix
+  file:
+    path: /var/lib/zabbix
+    state: directory
+    owner: zabbix
+    group: zabbix
+    mode: '0755'
+
+- name: Reiniciar Zabbix Web Service
+  service:
+    name: zabbix-web-service
+    state: restarted
+    enabled: yes
+
+- name: Reiniciar Zabbix Server
+  service:
+    name: zabbix-server
+    state: restarted

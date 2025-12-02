@@ -1,0 +1,4 @@
+---
+# tasks file for install-glpiti
+- import_tasks: install.yml
+- import_tasks: config-inventory.yml

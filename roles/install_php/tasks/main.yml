@@ -1,0 +1,12 @@
+---
+# tasks file for install-php
+#- import_tasks: install.yml
+
+
+- name: Play needed tasks in order
+  include_tasks: "{{ item }}"
+  loop:
+    - install.yml
+    - install_php74.yml
+    - install_php83.yml
+    - install_copy_php_ini.yml

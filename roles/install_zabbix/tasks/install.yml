@@ -1,0 +1,300 @@
+- name: Exclude Zabbix packages from EPEL repository
+  lineinfile:
+    path: /etc/yum.repos.d/epel.repo
+    regexp: '^excludepkgs='
+    line: 'excludepkgs=zabbix*'
+    insertafter: '^\[epel\]'
+    state: present
+
+#- name: Set flag on and keep it persistent across reboots Seliux [Zabbix]
+#  seboolean:
+#    name: "{{ item }}"
+#    state: yes
+#    persistent: yes
+#  with_items:
+#  - httpd_can_network_connect_zabbix
+#  - zabbix_can_network
+
+- name: Permit traffic in default zone on ports 10050-10053/tcp [Zabbix]
+  firewalld:
+    port: "{{ item }}/tcp"
+    permanent: yes
+    state: enabled
+  loop:
+    - 10050
+    - 10051
+    - 10052
+    - 10053
+
+- name: Reload firewalld
+  shell: firewall-cmd --reload
+
+- name: Create new databases with names 'zabbix'
+  community.mysql.mysql_db:
+    state: present
+    encoding: "{{ zabbix_encoding }}"
+    collation: "{{ zabbix_collation }}"
+    name: "{{ zabbix_db_name }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+
+- name: Create user with password, zabbix database localhost privileges and 'WITH GRANT OPTION' ALL
+  community.mysql.mysql_user:
+    state: present
+    name: "{{ zabbix_db_user }}"
+    password: "{{ zabbix_db_password }}"
+    #host: '%' # Permite acesso remoto
+    host: 'localhost' # Permite acesso local
+    priv: "{{ zabbix_db_name }}.*:ALL,GRANT"
+    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+
+- name: Create user with password, zabbix database 5 privileges and 'WITH GRANT OPTION' ALL
+  community.mysql.mysql_user:
+    state: present
+    name: "{{ zabbix_db_user }}"
+    password: "{{ zabbix_db_password }}"
+    host: '%' # Permite acesso remoto
+    priv: "{{ zabbix_db_name }}.*:ALL,GRANT"
+    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+
+- name: Garantir que o grupo mysql existe
+  group:
+    name: mysql
+    state: present
+
+- name: Adicionar zabbix ao grupo mysql
+  user:
+    name: zabbix
+    groups: mysql
+    append: yes
+
+#- name: Add repository oficial do Zabbix
+#  ansible.builtin.rpm_key:
+#    key: "{{ zabbix_key_repo }}"
+#    state: present
+
+- name: Install package repo Zabbix
+  ansible.builtin.dnf:
+    name: "{{ zabbix_repository }}"
+    disable_gpg_check: true
+    state: present
+
+- name: Clean cache DNF
+  ansible.builtin.command: dnf clean all
+  changed_when: false
+
+- name: Instalar Zabbix Server, frontend e agente
+  ansible.builtin.package:
+    name:
+      - zabbix-server-mysql
+      - zabbix-web-mysql
+      - zabbix-apache-conf
+      - zabbix-sql-scripts
+      - zabbix-selinux-policy
+      - zabbix-agent      
+    state: present
+
+- name: Check if Zabbix DB has tables
+  ansible.builtin.shell: >
+    mysql -u {{ zabbix_db_user }} -p{{ zabbix_db_password }} -e
+    "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='{{ zabbix_db_name }}';"
+  register: zabbix_table_check
+
+- name: Import initial schema and data
+  ansible.builtin.shell: "{{ zabbix_initial_schema }}"
+  when: zabbix_table_check.stdout | int == 0
+  notify: Mark schema as imported
+#
+#- name: Gerar comandos para corrigir collation das colunas
+#  community.mysql.mysql_query:
+#    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+#    query: >
+#      SELECT CONCAT(
+#        'ALTER TABLE `', TABLE_NAME, '` MODIFY `', COLUMN_NAME, '` ',
+#        COLUMN_TYPE, ' CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;'
+#      )
+#      FROM information_schema.COLUMNS
+#      WHERE TABLE_SCHEMA = 'zabbix'
+#        AND COLLATION_NAME = 'utf8mb4_unicode_ci';
+#  register: alter_column_commands
+#
+#- name: Aplicar correções de collation nas colunas
+#  community.mysql.mysql_query:
+#    login_unix_socket: /var/lib/mysql/mysql.sock # MariaDB
+#    query: "{{ item }}"
+#  loop: "{{ alter_column_commands.query_result }}"
+
+- name: Fazer backup do arquivo zabbix_server.conf
+  copy:
+    src: /etc/zabbix/zabbix_server.conf
+    dest: "/etc/zabbix/zabbix_server.conf.bak_{{ ansible_date_time.iso8601 }}"
+    remote_src: yes
+
+- name: Configure Zabbix Server
+  ansible.builtin.lineinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    regexp: '^DBPassword='
+    line: "DBPassword={{ zabbix_db_password }}"
+
+- name: Definir DBHost como 127.0.0.1
+  lineinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    regexp: '^DBHost='
+    line: 'DBHost=127.0.0.1'
+    create: yes
+
+- name: Comentar ou remover DBSocket
+  lineinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    regexp: '^DBSocket='
+    line: '# DBSocket='
+    state: present
+
+- name: Copy zabbix.conf.php para garantir parâmetros corretos no zabbix.conf.php
+  copy:
+    src: zabbix.conf.php
+    dest: /etc/zabbix/web/zabbix.conf.php
+
+#- name: Garantir parâmetros corretos no zabbix.conf.php
+#  blockinfile:
+#    path: /etc/zabbix/web/zabbix.conf.php
+#    marker: "# {mark} Zabbix Auto Config"
+#    insertafter: '^\$ZBX_SERVER_NAME'
+#    block: |
+#      $ZBX_SERVER      = '127.0.0.1';
+#      $ZBX_SERVER_PORT = '10051';
+#
+- name: Start and enable services Zabbix
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - zabbix-server
+    - zabbix-agent
+
+- name: Backup conf zabbix original file zabbix.conf
+  shell: mv /etc/httpd/conf.d/zabbix.conf /etc/httpd/conf.d/zabbix.conf.bkp
+
+- name: Copy Conf Apache zabbix
+  copy:
+    src: "{{ file_site_name_conf }}"
+    dest: "{{ path_apache_conf }}/{{ file_site_name_conf }}"
+
+- name: Backup conf zabbix original file php-fpm zabbix.conf
+  shell: mv "{{ zabbix_php_fpm_conf }}" "/etc/php-fpm.d/zabbix.conf.bkp"
+
+- name: Copy conf php-fpm zabbix
+  copy:
+    src: "{{ zabbix_php_fpm_file }}"
+    dest: "{{ zabbix_php_fpm_conf }}"
+
+- name: Copy conf php-fpm74 zabbix
+  copy:
+    src: "{{ zabbix_php_fpm74_file }}"
+    dest: "{{ zabbix_php_fpm74_conf }}"
+
+- name: Copy conf php-fpm74 zabbix
+  copy:
+    src: "{{ zabbix_php_fpm83_file }}"
+    dest: "{{ zabbix_php_fpm83_conf }}"
+
+- name: Get main IP
+  ansible.builtin.set_fact:
+    ip_local: "{{ ansible_default_ipv4.address }}"
+
+- name: Add input at /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ ip_local }} {{ server_name_apache }}"
+    state: present
+    create: yes
+    backup: yes
+
+- name: Change file ownership, group and permissions project
+  file:
+    path: "{{ path_site }}"
+    state: directory
+    recurse: yes
+    owner: apache
+    group: apache
+    mode: '0751'
+
+- name: Definir contexto de leitura para arquivos
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_content_t '{{ path_site }}(/.*)?'"
+  register: semanage_read
+
+- name: Aplicar contextos definidos com restorecon
+  ansible.builtin.command:
+    cmd: "restorecon -Rv {{ path_site }}"
+  register: restorecon_output
+
+- name: Definir contexto de leitura e escrita para sessões PHP
+  ansible.builtin.command:
+    cmd: "semanage fcontext -a -t httpd_sys_rw_content_t '/var/lib/php/session(/.*)?'"
+  register: semanage_php_session
+
+- name: Aplicar contextos definidos com restorecon nas sessões PHP
+  ansible.builtin.command:
+    cmd: "restorecon -Rv /var/lib/php/session"
+  register: restorecon_php_session
+
+- name: Prevent Zabbix packages from being updated
+  lineinfile:
+    path: /etc/yum.conf
+    regexp: '^exclude='
+    line: 'exclude=zabbix*'
+    create: yes
+    state: present
+
+- name: Instalar pacotes de suporte a locale
+  dnf:
+    name:
+      - glibc-common
+      - glibc-langpack-en
+      - glibc-langpack-pt
+      - glibc-locale-source
+    state: present
+
+- name: Gerar locales en_US.UTF-8 e pt_BR.UTF-8
+  command: localedef -i {{ item.lang }} -f UTF-8 {{ item.locale }}
+  loop:
+    - { lang: en_US, locale: en_US.UTF-8 }
+    - { lang: pt_BR, locale: pt_BR.UTF-8 }
+  args:
+    creates: "/usr/lib/locale/{{ item.locale }}"
+- name: Gerar locales en_US.UTF-8 e pt_BR.UTF-8
+  command: localedef -i {{ item.lang }} -f UTF-8 {{ item.locale }}
+  loop:
+    - { lang: en_US, locale: en_US.UTF-8 }
+    - { lang: pt_BR, locale: pt_BR.UTF-8 }
+  args:
+    creates: "/usr/lib/locale/{{ item.locale }}"
+
+- name: Definir locale padrão do sistema para pt_BR.UTF-8
+  ansible.builtin.lineinfile:
+    path: /etc/locale.conf
+    regexp: '^LANG='
+    line: 'LANG=pt_BR.UTF-8'
+    create: yes
+
+#- name: Definir locale padrão do sistema para en_US.UTF-8
+#  ansible.builtin.lineinfile:
+#    path: /etc/locale.conf
+#    regexp: '^LANG='
+#    line: 'LANG=en_US.UTF-8'
+#    create: yes
+
+- name: Set flag on and keep it persistent across reboots Seliux [Zabbix]
+  seboolean:
+    name: "{{ item }}"
+    state: yes
+    persistent: yes
+  with_items:
+  #- httpd_can_network_connect_zabbix
+  - zabbix_can_network
+- name: Restart service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: httpd

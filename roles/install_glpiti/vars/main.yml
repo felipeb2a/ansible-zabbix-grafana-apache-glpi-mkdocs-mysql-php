@@ -1,0 +1,26 @@
+---
+# vars file for install-glpiti
+name_app: glpi
+path_site: /var/www/html/glpi
+file_site_name_conf: glpi.conf
+server_name_apache: "glpi.yourdomain.com.br"
+path_apache_conf: /etc/httpd/conf.d
+
+path_scripts_inventory: /var/www/html/glpi/scripts_inventory
+path_scripts_inventory_files_xml: /var/www/html/glpi/scripts_inventory/files_xml
+
+url_inventory_glpi: "http://glpi.yourdomain.com.br/front/inventory.php"
+
+port_inventory: 62354
+
+# vars download glpi
+#url_download_glpi: "https://github.com/glpi-project/glpi/releases/download/10.0.10/glpi-10.0.10.tgz"
+url_download_glpi: "https://github.com/glpi-project/glpi/releases/download/11.0.2/glpi-11.0.2.tgz"
+name_download_glpi_file: "glpi.tgz"
+
+
+url_download_glpiinventory: "https://github.com/glpi-project/glpi-inventory-plugin/releases/download/1.6.3/glpi-glpiinventory-1.6.3.tar.bz2"
+name_download_glpiinventory_file: "glpiinventory.tgz"
+
+url_download_glpiagent: "https://github.com/glpi-project/glpi-agent/releases/download/1.15/glpi-agent-1.15-x86_64.AppImage"
+name_download_glpiagent_file: "glpi-agent-x86_64.AppImage"

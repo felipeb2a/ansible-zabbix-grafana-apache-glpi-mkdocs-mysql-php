@@ -1,0 +1,92 @@
+- hosts: all
+  become: yes
+  user: administrator 
+  gather_facts: yes
+  pre_tasks:
+  - name: Disable SELinux
+    selinux:
+      state: disabled
+  
+  - name: Atualizando o repo
+    raw: dnf -y update
+
+  - name: Instalando o epel-release
+    raw: dnf -y install epel-release
+
+  - name: Intalando o dnf-utils
+    raw: dnf -y install dnf-utils
+
+#  - name: Instalando o python
+#    raw: dnf -y install python39
+
+# - name: Removendo o link simbolico python antigo
+#   raw: rm /usr/bin/python"
+
+  - name: Adicionando o link simbolico do python mais recente
+    raw: ln -s python3 /usr/bin/python
+
+  - name: Instalando o python-firewall
+    raw: dnf -y install python-firewall
+
+  - name: Instalando o libselinux-python3
+    raw: dnf -y install libselinux-python3
+
+  - name: Instalando o libsemanage-python3
+    raw: dnf -y install libsemanage-python3
+
+  - name: Instalando o  python-dnf
+    raw: dnf -y install python-dnf
+
+  - name: Instalando o git
+    raw: dnf -y install git
+
+  - name: Instalando o tar
+    raw: dnf -y install tar
+
+  - name: Instalando o wget
+    raw: dnf -y install wget
+
+  - name: Instalando o bzip2
+    raw: dnf -y install bzip2
+
+  - name: Instalando o unzip
+    raw: dnf -y install unzip
+
+  roles:
+    - { role: provisioning, tags: ["provisioning"] }
+    - { role: install_apache, tags: ['install_apache_role'] }
+    - { role: install_php, tags: ['install_php_role'] }
+    - { role: install_letsencrypt, tags: ['install_letsencrypt_role'] }
+    - { role: install_mkdocs, tags: ["install_mkdocs_role"] }
+    - { role: install_mysql, tags: ['install_mysql_role'] }
+    - { role: install_intranet, tags: ['install_intranet_role'] }
+    - { role: install_glpiti, tags: ['install_glpiti_role'] }
+    - { role: install_zabbix, tags: ['install_zabbix_role'] }
+    - { role: install_grafana, tags: ['install_grafana_role'] }
+
+  post_tasks:
+
+  - name: Enable SELinux
+    selinux:
+      policy: targeted
+      state: enforcing
+#
+#  - name: Restart service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
+#    systemd:
+#      state: restarted
+#      daemon_reload: yes
+#      name: httpd
+#
+  - name: Reiniciar o servidor
+    ansible.builtin.reboot:
+      msg: "Reiniciando após instalação das apps"
+      reboot_timeout: 600
+
+  - name: Aguardar o servidor voltar
+    ansible.builtin.wait_for_connection:
+      timeout: 300
+      delay: 10
+
+  - name: Exibir mensagem de sucesso
+    ansible.builtin.debug:
+      msg: "Apps instalado com sucesso e servidor reiniciado!"

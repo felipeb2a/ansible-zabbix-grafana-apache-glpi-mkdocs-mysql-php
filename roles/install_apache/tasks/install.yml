@@ -1,0 +1,87 @@
+- name: Instalando os pacotes httpd, httpd-tools
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - httpd
+    - httpd-tools
+
+- name: Habilitando os serviços
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+#- name: Enabling selinux
+#  shell: setsebool -P httpd_execmem on && setsebool -P httpd_can_network_connect on && setsebool -P httpd_can_network_connect_db on && setsebool -P httpd_can_sendmail on
+
+- name: Set flag on and keep it persistent across reboots
+  seboolean:
+    name: "{{ item }}"
+    state: yes
+    persistent: yes
+  with_items:
+  - httpd_execmem
+  - httpd_can_network_connect
+  - httpd_can_network_connect_db
+  - httpd_can_sendmail
+
+- name: Instalando os pacotes mod_ssl, mod_proxy_html, mod_ldap, openssl
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - mod_ssl
+    - mod_proxy_html
+    - mod_ldap
+    - openssl
+
+- name: Backup httpd.conf
+  shell: mv /etc/httpd/conf/httpd.conf /etc/httpd/conf/httpd.conf.bkp
+
+- name: Copy httpd.conf
+  copy:
+    src: httpd.conf
+    dest: /etc/httpd/conf/httpd.conf
+
+- name: Criar pasta de configurações personalizadas apache
+  file:
+    path: /etc/httpd/conf.custom.d
+    state: directory
+
+- name: Copy auth.conf
+  copy:
+    src: auth.conf
+    dest: /etc/httpd/conf.custom.d/auth.conf
+
+- name: Copy security.conf
+  copy:
+    src: security.conf
+    dest: /etc/httpd/conf.custom.d/security.conf
+
+- name: Copy authorized_passwd
+  copy:
+    src: authorized_passwd
+    dest: /etc/httpd/conf.custom.d/authorized_passwd
+
+- name: Change file ownership, group and permissions authorized_passwd
+  file:
+    path: /etc/httpd/conf.custom.d/authorized_passwd
+    state: file
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Backup ssl.conf
+  shell: cp -r /etc/httpd/conf.d/ssl.conf /etc/httpd/conf.d/ssl.conf.bkp
+
+- name: Alterando protocolo SSL
+  shell: sed -i 's/^#SSLProtocol all -SSLv3$/SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1 +TLSv1.2 +TLSv1.3/' /etc/httpd/conf.d/ssl.conf
+
+- name: Restart service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: httpd

@@ -1,0 +1,28 @@
+---
+# vars file for install-zabbix
+name_app: zabbix
+path_site: /usr/share/zabbix
+file_site_name_conf: zabbix.conf
+server_name_apache: "zabbix.yourdomain.com.br"
+path_apache_conf: /etc/httpd/conf.d
+
+zabbix_version: "7.0"
+zabbix_encoding: "utf8mb4"
+zabbix_collation: "utf8mb4_bin"
+zabbix_db_name: "zabbix"
+zabbix_db_user: "zabbix"
+zabbix_db_password: "zabbixpass"
+zabbix_server_ip: "127.0.0.1"
+zabbix_key_repo: "https://repo.zabbix.com/zabbix-official-repo.key"
+zabbix_repository: "https://repo.zabbix.com/zabbix/{{ zabbix_version }}/alma/9/x86_64/zabbix-release-latest-{{ zabbix_version }}.el9.noarch.rpm"
+zabbix_initial_schema: "zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql --default-character-set=utf8mb4 -u {{ zabbix_db_user }} -p{{ zabbix_db_password }} {{ zabbix_db_name }}"
+
+zabbix_php_fpm_file: "zabbix-php-fpm.conf"
+zabbix_php_fpm74_file: "zabbix-php-fpm74.conf"
+zabbix_php_fpm83_file: "zabbix-php-fpm83.conf"
+zabbix_php_fpm_conf: "/etc/php-fpm.d/zabbix.conf"
+zabbix_php_fpm74_conf: "/etc/opt/remi/php74/php-fpm.d/zabbix.conf"
+zabbix_php_fpm83_conf: "/etc/opt/remi/php83/php-fpm.d/zabbix.conf"
+
+root_db_user: "root"
+root_db_password: "P@sswd"

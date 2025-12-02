@@ -1,0 +1,3 @@
+---
+# tasks file for install-mysql
+- import_tasks: install.yml
