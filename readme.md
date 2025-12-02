@@ -491,7 +491,7 @@ Passo a passo da instalação após concluir a instalação do grafana está no 
 - Acessar a url [ZABBIX](http://zabbix.yourdomain.com.br/)
 - Selecione o Idioma e click em `Next Step`
     ![Passo 01](.github/assets/images/readme/zabbix/install_zabbix_01.jpg)
-- Se não tiver faltando nenhum intem obrigatório click em `Next Step`
+- Se não tiver faltando nenhum item obrigatório click em `Next Step`
     ![Passo 02](.github/assets/images/readme/zabbix/install_zabbix_02.jpg)
 - Informe os dados de acesso ao banco do zabbix e click em `Next Step`
     ![Passo 03](.github/assets/images/readme/zabbix/install_zabbix_03.jpg)
@@ -578,7 +578,7 @@ Passo a passo da instalação após concluir a instalação do grafana está no 
     ![Instalação passo 02](.github/assets/images/readme/glpi/install_glpi_02.jpg)
 - Click em `Instalar`
     ![Instalação passo 03](.github/assets/images/readme/glpi/install_glpi_03.jpg)
-- Se não tiver faltando nenhum intem obrigatório click em `Continuar`
+- Se não tiver faltando nenhum item obrigatório click em `Continuar`
     ![Instalação passo 04](.github/assets/images/readme/glpi/install_glpi_04.jpg)
 - Caso esteja utilizando o banco local siga como na imagem:
   - Servidor SQL: `127.0.0.1`
