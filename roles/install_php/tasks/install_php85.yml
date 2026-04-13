@@ -1,0 +1,90 @@
+- name: Disable the default PHP module
+  shell: dnf -y module reset php
+
+- name: Enable Remis PHP8.5 module
+  shell: dnf -y module enable php:remi-8.5
+
+#- name: Instalando o php 8.5
+#  shell: dnf -y module install php:remi-8.5
+
+- name: Instalando o php 8.5
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php85
+
+#- name: Update Repo
+#  shell: dnf -y update
+
+- name: Instalando os modulos php 8.5
+  dnf:
+    name: "{{ packages }}"
+    state : present
+  vars:
+    packages:
+    - php85-php-apcu
+    - php85-php-bcmath
+    - php85-php-cgi
+    - php85-php-cli
+    - php85-php-common
+    - php85-php-curl
+    - php85-php-dom
+    - php85-php-fpm
+    - php85-php-gd
+    - php85-php-imagick
+    - php85-php-imap
+    - php85-php-intl
+    - php85-php-json
+    - php85-php-ldap
+    - php85-php-mbstring
+    - php85-php-mcrypt
+    - php85-php-memcached
+    - php85-php-memcache
+    - php85-php-mysql
+    - php85-php-mysqlnd
+    - php85-php-opcache
+    - php85-php-openssl
+    #- php-pear-CAS
+    - php85-php-phar
+    - php85-php-pdo
+    - php85-php-readline
+    - php85-php-redis
+    - php85-php-sodium
+    - php85-php-tokenizer
+    - php85-php-xml
+    - php85-php-xmlrpc
+    - php85-php-zip
+    - php85-php-sockets
+    - php85-php-xmlwriter
+    - php85-php-xmlreader
+    - php85-php-ctype
+    - php85-php-session
+    - php85-php-gettext
+
+- name: Definir diretivas listen.owner, listen.group e listen.mode no PHP-FPM 8.5
+  ansible.builtin.lineinfile:
+    path: /etc/opt/remi/php85/php-fpm.d/www.conf
+    regexp: '^listen.owner|^listen.group|^listen.mode'
+    line: "{{ item }}"
+    state: present
+    insertafter: '^\\[www\\]'
+  loop:
+    - 'listen.owner = apache'
+    - 'listen.group = apache'
+    - 'listen.mode = 0660'
+
+- name: Habilitando o serviço php85-php-fpm
+  systemd:
+    name: php85-php-fpm
+    state: started
+    enabled: yes
+
+- name: Corrigir permissões do socket PHP-FPM 8.5
+  file:
+    path: /var/opt/remi/php85/run/php-fpm/www.sock
+    owner: apache
+    group: apache
+    mode: '0660'
+  #when: ansible_facts.services['php85-php-fpm'].state == 'running's

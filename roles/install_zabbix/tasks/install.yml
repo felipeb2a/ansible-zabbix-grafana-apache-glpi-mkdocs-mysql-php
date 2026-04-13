@@ -292,7 +292,9 @@
     persistent: yes
   with_items:
   #- httpd_can_network_connect_zabbix
-  - zabbix_can_network
+  #- zabbix_can_network
+  - httpd_can_connect_zabbix
+
 - name: Restart service httpd on centos, in all cases, also issue daemon-reload to pick up config changes
   systemd:
     state: restarted

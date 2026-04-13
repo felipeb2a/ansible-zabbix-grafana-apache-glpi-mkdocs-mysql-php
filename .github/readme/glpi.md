@@ -654,15 +654,15 @@ Projeto para instalação de servidor apache, php, letsencrypt, GLPI e MkDocs ut
 - Update tables GLPI
     ```
     $ cd /var/www/html/glpi
-    $ sudo php83 bin/console glpi:migration:utf8mb4
-    $ sudo php83 bin/console glpi:migration:unsigned_keys
+    $ sudo php85 bin/console glpi:migration:utf8mb4
+    $ sudo php85 bin/console glpi:migration:unsigned_keys
 
-    $ sudo php83 bin/console database:check_schema_integrity
-    $ sudo php83 bin/console migration:timestamps
-    $ sudo php83 bin/console migration:utf8mb4
-    $ sudo php83 bin/console migration:unsigned_keys
-    $ sudo php83 bin/console db:update
-    $ sudo php83 bin/console db:check
+    $ sudo php85 bin/console database:check_schema_integrity
+    $ sudo php85 bin/console migration:timestamps
+    $ sudo php85 bin/console migration:utf8mb4
+    $ sudo php85 bin/console migration:unsigned_keys
+    $ sudo php85 bin/console db:update
+    $ sudo php85 bin/console db:check
 
     ```
 

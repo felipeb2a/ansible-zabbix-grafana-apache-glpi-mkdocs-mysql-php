@@ -1,0 +1,53 @@
+- name: Install build dependencies for mydumper
+  ansible.builtin.dnf:
+    name:
+      - epel-release
+      - git
+      - cmake
+      - gcc
+      - gcc-c++
+      - make
+      - glib2-devel
+      - mysql-devel
+      - zlib-devel
+      - pcre2-devel
+      - openssl-devel
+      - zstd
+    state: present
+
+- name: Clone mydumper repository
+  ansible.builtin.git:
+    repo: https://github.com/mydumper/mydumper.git
+    dest: /usr/local/src/mydumper
+    version: master
+    force: yes
+
+- name: Create build directory
+  ansible.builtin.file:
+    path: /usr/local/src/mydumper/build
+    state: directory
+
+- name: Run cmake for mydumper
+  ansible.builtin.command:
+    cmd: cmake ..
+    chdir: /usr/local/src/mydumper/build
+
+- name: Compile mydumper
+  ansible.builtin.command:
+    cmd: make -j"{{ ansible_processor_vcpus | default(2) }}"
+    chdir: /usr/local/src/mydumper/build
+
+- name: Install mydumper
+  ansible.builtin.command:
+    cmd: make install
+    chdir: /usr/local/src/mydumper/build
+
+- name: Verify installation
+  ansible.builtin.command:
+    cmd: /usr/local/bin/mydumper --version
+  register: mydumper_version
+  changed_when: false
+
+- name: Show version
+  ansible.builtin.debug:
+    var: mydumper_version.stdout

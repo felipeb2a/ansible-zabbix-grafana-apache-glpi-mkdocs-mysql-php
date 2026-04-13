@@ -334,8 +334,8 @@ Projeto para instalação de servidor apache, php, letsencrypt, GLPI, MkDocs, Za
     domain="yourdomain.com.br"
     
     # vars php
-    php_version_1=php74
-    php_version_2=php83
+    php_version_1=php83
+    php_version_2=php85
     
     # vars file for config-sites
     path_apache_conf="/etc/httpd/conf.d"
@@ -433,15 +433,15 @@ Projeto para instalação de servidor apache, php, letsencrypt, GLPI, MkDocs, Za
 - Comandos caso precise realizar Update das tables GLPI
     ```
     $ cd /var/www/html/glpi
-    $ sudo php83 bin/console glpi:migration:utf8mb4
-    $ sudo php83 bin/console glpi:migration:unsigned_keys
+    $ sudo php85 bin/console glpi:migration:utf8mb4
+    $ sudo php85 bin/console glpi:migration:unsigned_keys
 
-    $ sudo php83 bin/console database:check_schema_integrity
-    $ sudo php83 bin/console migration:timestamps
-    $ sudo php83 bin/console migration:utf8mb4
-    $ sudo php83 bin/console migration:unsigned_keys
-    $ sudo php83 bin/console db:update
-    $ sudo php83 bin/console db:check
+    $ sudo php85 bin/console database:check_schema_integrity
+    $ sudo php85 bin/console migration:timestamps
+    $ sudo php85 bin/console migration:utf8mb4
+    $ sudo php85 bin/console migration:unsigned_keys
+    $ sudo php85 bin/console db:update
+    $ sudo php85 bin/console db:check
 
     ```
 - Caso vá utilizar o inventory do glpi para equipamentos sw, nas, e esxi descomente os arquivos .sh  em > install_glpiti > templates.
@@ -524,6 +524,46 @@ Passo a passo da instalação após concluir a instalação do grafana está no 
     ![Passo 11](.github/assets/images/readme/zabbix/install_zabbix_11.jpg)
 
 ### Restore Database Zabbix 6.0
+
+- Se o Database atual do zabbix for grande, melhor utilizar o MYDUMPER que é mais rápido.
+
+#### Por MYDUMPER
+- Instalar mesma versão do mydumper nos dois servidores:
+```
+git clone https://github.com/mydumper/mydumper.git
+cd mydumper
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+
+- Backup database antigo:
+```
+sudo /usr/local/bin/mydumper -u root -p 'P@sswd'  -B zabbix -o backup --threads 8 --compress --trx-tables instead
+chmod 777 -R backup
+```
+
+- Restore database antigo:
+```
+  sudo systemctl stop zabbix-server
+  sudo systemctl stop zabbix-agent
+  sudo systemctl stop zabbix-web-server
+  mysql -uroot -p
+  DROP DATABASE zabbix;
+  CREATE DATABASE zabbix CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+  GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'localhost';
+  quit;
+  scp administrator@IP-OLD-ZABBIX:/home/administrator/backup/* /home/administrator/backup
+  sudo /usr/local/bin/myloader -u root -p 'P@sswd' -B zabbix -d backup --threads 12
+  sudo systemctl start zabbix-server
+  sudo systemctl start zabbix-agent
+  sudo systemctl start zabbix-web-server
+  sudo tail -f /var/log/zabbix/zabbix_server.log
+  ```
+
+#### Por MYSQLDUMP
 - Backup database antigo:
   ```
   sudo mysqldump -u zabbix -p --default-character-set=utf8mb4 --single-transaction --quick zabbix > zabbix60_backup.sql

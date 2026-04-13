@@ -40,7 +40,7 @@
     - php83-php-mysqlnd
     - php83-php-opcache
     - php83-php-openssl
-    - php-pear-CAS
+    #- php-pear-CAS
     - php83-php-phar
     - php83-php-pdo
     - php83-php-readline

@@ -3,12 +3,12 @@
     src: php.ini
     dest: /etc/php.ini
 
-- name: Copy conf php.ini php74
-  copy:
-    src: php74-php.ini
-    dest: /etc/opt/remi/php74/php.ini
-
-- name: Copy conf php.ini php83 
+- name: Copy conf php.ini php83
   copy:
     src: php83-php.ini
     dest: /etc/opt/remi/php83/php.ini
+
+- name: Copy conf php.ini php85 
+  copy:
+    src: php85-php.ini
+    dest: /etc/opt/remi/php85/php.ini

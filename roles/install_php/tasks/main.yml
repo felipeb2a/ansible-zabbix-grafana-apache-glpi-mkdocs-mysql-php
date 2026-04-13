@@ -7,6 +7,6 @@
   include_tasks: "{{ item }}"
   loop:
     - install.yml
-    - install_php74.yml
     - install_php83.yml
+    - install_php85.yml
     - install_copy_php_ini.yml

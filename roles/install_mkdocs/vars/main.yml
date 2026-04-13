@@ -13,7 +13,7 @@ github_passwd: ""
 github_url: ""
 
 # vars php
-php_version: php83
+php_version: php85
 
 # vars download mkdocs
 url_download_mkdocs: "https://files.pythonhosted.org/packages/89/58/aa3301b23966a71d7f8e55233f467b3cec94a651434e9cd9053811342539/mkdocs-1.5.3-py3-none-any.whl"

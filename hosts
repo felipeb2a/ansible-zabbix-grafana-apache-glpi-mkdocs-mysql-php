@@ -6,8 +6,8 @@ vm-node-02
 domain="yourdomain.com.br"
 
 # vars php
-php_version_1=php74
-php_version_2=php83
+php_version_1=php83
+php_version_2=php85
 
 # vars file for config-sites
 path_apache_conf="/etc/httpd/conf.d"
